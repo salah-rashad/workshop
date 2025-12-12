@@ -3,9 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:month_picker_dialog/month_picker_dialog.dart';
 import 'package:provider/provider.dart';
-import 'package:workshop/models/employee.dart';
 import 'package:workshop/models/advance.dart';
+import 'package:workshop/models/attendance.dart' show Attendance;
+import 'package:workshop/models/employee.dart';
 import 'package:workshop/providers/workshop_provider.dart';
+import 'package:workshop/widgets/responsive_container.dart';
 
 class EmployeeDetailScreen extends StatefulWidget {
   final Employee employee;
@@ -117,6 +119,13 @@ class _EmployeeDetailScreenState extends State<EmployeeDetailScreen> {
       initialDate: _selectedMonth,
       firstDate: DateTime(2023),
       lastDate: DateTime(2030),
+      monthPickerDialogSettings: const MonthPickerDialogSettings(
+        dialogSettings: PickerDialogSettings(
+          dismissible: true,
+          dialogRoundedCornersRadius: 12,
+          forcePortrait: true,
+        ),
+      ),
     );
     if (picked != null) {
       setState(() {
@@ -140,50 +149,52 @@ class _EmployeeDetailScreenState extends State<EmployeeDetailScreen> {
       month: _selectedMonth,
     );
 
-    return Card(
-      margin: const EdgeInsets.all(16.0),
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _buildStatItem('Days Worked', '$daysWorked'),
-                _buildStatItem('Daily Rate', '${widget.employee.dailyRate}'),
-                _buildStatItem(
-                  'Advances',
-                  '${totalAdvances.toStringAsFixed(1)}',
-                ),
-              ],
-            ),
-            const Divider(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Net Payable',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.grey[700],
+    return ResponsiveContainer(
+      child: Card(
+        margin: const EdgeInsets.all(16.0),
+        elevation: 4,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _buildStatItem('Days Worked', '$daysWorked'),
+                  _buildStatItem('Daily Rate', '${widget.employee.dailyRate}'),
+                  _buildStatItem(
+                    'Advances',
+                    '${totalAdvances.toStringAsFixed(1)}',
                   ),
-                ),
-                Text(
-                  '${netPayable.toStringAsFixed(2)}',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: netPayable >= 0
-                        ? Colors.green[800]
-                        : Colors.red[800],
+                ],
+              ),
+              const Divider(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Net Payable',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey[700],
+                    ),
                   ),
-                ),
-              ],
-            ),
-          ],
+                  Text(
+                    '${netPayable.toStringAsFixed(2)}',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: netPayable >= 0
+                          ? Colors.green[800]
+                          : Colors.red[800],
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -214,74 +225,113 @@ class _EmployeeDetailScreenState extends State<EmployeeDetailScreen> {
       return const Center(child: Text('No attendance records for this month.'));
     }
 
-    return ListView.builder(
-      itemCount: attendance.length,
-      itemBuilder: (context, index) {
-        final record = attendance[index];
-        final dateFormat = DateFormat('EEE, MMM d, yyyy');
-        final timeFormat = DateFormat('h:mm a');
+    return ResponsiveContainer(
+      child: ListView.builder(
+        itemCount: attendance.length,
+        itemBuilder: (context, index) {
+          final record = attendance[index];
+          final dateFormat = DateFormat('EEE, MMM d, yyyy');
+          final timeFormat = DateFormat('h:mm a');
 
-        return Card(
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          child: ListTile(
-            leading: const Icon(Icons.calendar_today, color: Colors.blue),
-            title: Text(
-              dateFormat.format(record.date),
-              style: const TextStyle(fontWeight: FontWeight.w500),
-            ),
-            subtitle: Row(
-              children: [
-                Icon(Icons.login, size: 16, color: Colors.green[700]),
-                const SizedBox(width: 4),
-                Text(
-                  record.checkInTime != null
-                      ? timeFormat.format(record.checkInTime!)
-                      : '-',
-                ),
-                const SizedBox(width: 16),
-                Icon(Icons.logout, size: 16, color: Colors.orange[700]),
-                const SizedBox(width: 4),
-                Text(
-                  record.checkOutTime != null
-                      ? timeFormat.format(record.checkOutTime!)
-                      : '-',
-                ),
-              ],
-            ),
-            trailing: PopupMenuButton<String>(
-              onSelected: (value) {
-                if (value == 'edit') {
-                  _showEditAttendanceDialog(context, record);
-                } else if (value == 'delete') {
-                  _showDeleteAttendanceConfirmation(context, record);
-                }
-              },
-              itemBuilder: (context) => [
-                const PopupMenuItem(
-                  value: 'edit',
-                  child: Row(
+          String durationText = '';
+          if (record.checkInTime != null && record.checkOutTime != null) {
+            final duration = record.checkOutTime!.difference(
+              record.checkInTime!,
+            );
+            final hours = duration.inHours;
+            final minutes = duration.inMinutes.remainder(60);
+            durationText = '${hours}h ${minutes}m';
+          }
+
+          return Card(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: ListTile(
+              leading: const Icon(Icons.calendar_today, color: Colors.blue),
+              title: Text(
+                dateFormat.format(record.date),
+                style: const TextStyle(fontWeight: FontWeight.w500),
+              ),
+              subtitle: Wrap(
+                spacing: 16,
+                runSpacing: 8,
+                direction: Axis.horizontal,
+                alignment: WrapAlignment.spaceBetween,
+                children: [
+                  Row(
+                    spacing: 4,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.edit, size: 20),
-                      SizedBox(width: 8),
-                      Text('Edit Time'),
+                      Icon(Icons.login, size: 16, color: Colors.green[700]),
+                      Text(
+                        record.checkInTime != null
+                            ? timeFormat.format(record.checkInTime!)
+                            : '-',
+                      ),
                     ],
                   ),
-                ),
-                const PopupMenuItem(
-                  value: 'delete',
-                  child: Row(
+                  Row(
+                    spacing: 4,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.delete, color: Colors.red, size: 20),
-                      SizedBox(width: 8),
-                      Text('Delete'),
+                      Icon(Icons.logout, size: 16, color: Colors.orange[700]),
+                      Text(
+                        record.checkOutTime != null
+                            ? timeFormat.format(record.checkOutTime!)
+                            : '-',
+                      ),
                     ],
                   ),
-                ),
-              ],
+                  if (durationText.isNotEmpty) ...[
+                    Row(
+                      spacing: 4,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.access_time,
+                          size: 16,
+                          color: Colors.blue[700],
+                        ),
+                        Text(
+                          durationText,
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+              trailing: PopupMenuButton<String>(
+                onSelected: (value) {
+                  if (value == 'edit') {
+                    _showEditAttendanceDialog(context, record);
+                  } else if (value == 'delete') {
+                    _showDeleteAttendanceConfirmation(context, record);
+                  }
+                },
+                itemBuilder: (context) => [
+                  const PopupMenuItem(
+                    value: 'edit',
+                    child: Row(
+                      spacing: 8,
+                      children: [Icon(Icons.edit, size: 20), Text('Edit Time')],
+                    ),
+                  ),
+                  const PopupMenuItem(
+                    value: 'delete',
+                    child: Row(
+                      spacing: 8,
+                      children: [
+                        Icon(Icons.delete, color: Colors.red, size: 20),
+                        Text('Delete'),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 
@@ -293,100 +343,105 @@ class _EmployeeDetailScreenState extends State<EmployeeDetailScreen> {
     // Sort by date descending
     advances.sort((a, b) => b.date.compareTo(a.date));
 
-    return Column(
-      children: [
-        Expanded(
-          child: advances.isEmpty
-              ? const Center(
-                  child: Text('No advances recorded for this month.'),
-                )
-              : ListView.builder(
-                  itemCount: advances.length,
-                  itemBuilder: (context, index) {
-                    final advance = advances[index];
-                    return Card(
-                      margin: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 4,
-                      ),
-                      child: ListTile(
-                        leading: const Icon(Icons.money_off, color: Colors.red),
-                        title: Text(
-                          '${advance.amount.toStringAsFixed(2)}',
-                          style: const TextStyle(fontWeight: FontWeight.bold),
+    return ResponsiveContainer(
+      child: Column(
+        children: [
+          Expanded(
+            child: advances.isEmpty
+                ? const Center(
+                    child: Text('No advances recorded for this month.'),
+                  )
+                : ListView.builder(
+                    itemCount: advances.length,
+                    itemBuilder: (context, index) {
+                      final advance = advances[index];
+                      return Card(
+                        margin: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 4,
                         ),
-                        subtitle: Text(advance.note),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              DateFormat('MMM d, yyyy').format(advance.date),
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey,
+                        child: ListTile(
+                          leading: const Icon(
+                            Icons.money_off,
+                            color: Colors.red,
+                          ),
+                          title: Text(
+                            '${advance.amount.toStringAsFixed(2)}',
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          subtitle: Text(advance.note),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                DateFormat('MMM d, yyyy').format(advance.date),
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey,
+                                ),
                               ),
-                            ),
-                            PopupMenuButton<String>(
-                              padding: EdgeInsets.zero,
-                              onSelected: (value) {
-                                if (value == 'edit') {
-                                  _showEditAdvanceDialog(context, advance);
-                                } else if (value == 'delete') {
-                                  _showDeleteAdvanceConfirmation(
-                                    context,
-                                    advance,
-                                  );
-                                }
-                              },
-                              itemBuilder: (context) => [
-                                const PopupMenuItem(
-                                  value: 'edit',
-                                  child: Row(
-                                    children: [
-                                      Icon(Icons.edit, size: 20),
-                                      SizedBox(width: 8),
-                                      Text('Edit'),
-                                    ],
+                              PopupMenuButton<String>(
+                                padding: EdgeInsets.zero,
+                                onSelected: (value) {
+                                  if (value == 'edit') {
+                                    _showEditAdvanceDialog(context, advance);
+                                  } else if (value == 'delete') {
+                                    _showDeleteAdvanceConfirmation(
+                                      context,
+                                      advance,
+                                    );
+                                  }
+                                },
+                                itemBuilder: (context) => [
+                                  const PopupMenuItem(
+                                    value: 'edit',
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.edit, size: 20),
+                                        SizedBox(width: 8),
+                                        Text('Edit'),
+                                      ],
+                                    ),
                                   ),
-                                ),
-                                const PopupMenuItem(
-                                  value: 'delete',
-                                  child: Row(
-                                    children: [
-                                      Icon(
-                                        Icons.delete,
-                                        color: Colors.red,
-                                        size: 20,
-                                      ),
-                                      SizedBox(width: 8),
-                                      Text('Delete'),
-                                    ],
+                                  const PopupMenuItem(
+                                    value: 'delete',
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.delete,
+                                          color: Colors.red,
+                                          size: 20,
+                                        ),
+                                        SizedBox(width: 8),
+                                        Text('Delete'),
+                                      ],
+                                    ),
                                   ),
-                                ),
-                              ],
-                            ),
-                          ],
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                    );
-                  },
+                      );
+                    },
+                  ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                icon: const Icon(Icons.add),
+                onPressed: () => _showAddAdvanceDialog(context),
+                label: const Text('Add Advance'),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
-        ),
-        Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              icon: const Icon(Icons.add),
-              onPressed: () => _showAddAdvanceDialog(context),
-              label: const Text('Add Advance'),
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
               ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -441,74 +496,76 @@ class _EmployeeDetailScreenState extends State<EmployeeDetailScreen> {
       );
     }
 
-    return SingleChildScrollView(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            const Text(
-              'Attendance (Last 6 Months)',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const Text(
-              'Charts show last 6 months trend regardless of filter',
-              style: TextStyle(fontSize: 12, color: Colors.grey),
-            ),
-            const SizedBox(height: 20),
-            SizedBox(
-              height: 250,
-              child: BarChart(
-                BarChartData(
-                  alignment: BarChartAlignment.spaceAround,
-                  maxY: 31,
-                  barTouchData: BarTouchData(
-                    enabled: true,
-                    touchTooltipData: BarTouchTooltipData(
-                      tooltipBgColor: Colors.blueGrey,
-                      getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                        return BarTooltipItem(
-                          '${rod.toY.toInt()} Days',
-                          const TextStyle(color: Colors.white),
-                        );
-                      },
-                    ),
-                  ),
-                  titlesData: FlTitlesData(
-                    show: true,
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        getTitlesWidget: (value, meta) {
-                          final i = value.toInt();
-                          if (i < 0 || i > 5) return const SizedBox();
-                          final d = DateTime(now.year, now.month - (5 - i));
-                          return Padding(
-                            padding: const EdgeInsets.only(top: 8.0),
-                            child: Text(
-                              DateFormat('MMM').format(d),
-                              style: const TextStyle(fontSize: 12),
-                            ),
+    return ResponsiveContainer(
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            children: [
+              const Text(
+                'Attendance (Last 6 Months)',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const Text(
+                'Charts show last 6 months trend regardless of filter',
+                style: TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                height: 250,
+                child: BarChart(
+                  BarChartData(
+                    alignment: BarChartAlignment.spaceAround,
+                    maxY: 31,
+                    barTouchData: BarTouchData(
+                      enabled: true,
+                      touchTooltipData: BarTouchTooltipData(
+                        tooltipBgColor: Colors.blueGrey,
+                        getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                          return BarTooltipItem(
+                            '${rod.toY.toInt()} Days',
+                            const TextStyle(color: Colors.white),
                           );
                         },
                       ),
                     ),
-                    leftTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
+                    titlesData: FlTitlesData(
+                      show: true,
+                      bottomTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          getTitlesWidget: (value, meta) {
+                            final i = value.toInt();
+                            if (i < 0 || i > 5) return const SizedBox();
+                            final d = DateTime(now.year, now.month - (5 - i));
+                            return Padding(
+                              padding: const EdgeInsets.only(top: 8.0),
+                              child: Text(
+                                DateFormat('MMM').format(d),
+                                style: const TextStyle(fontSize: 12),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      leftTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false),
+                      ),
+                      topTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false),
+                      ),
+                      rightTitles: const AxisTitles(
+                        sideTitles: SideTitles(showTitles: false),
+                      ),
                     ),
-                    topTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                    rightTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
+                    gridData: const FlGridData(show: false),
+                    borderData: FlBorderData(show: false),
+                    barGroups: orderedGroups,
                   ),
-                  gridData: const FlGridData(show: false),
-                  borderData: FlBorderData(show: false),
-                  barGroups: orderedGroups,
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -739,7 +796,10 @@ class _EmployeeDetailScreenState extends State<EmployeeDetailScreen> {
     );
   }
 
-  void _showDeleteAttendanceConfirmation(BuildContext context, dynamic record) {
+  void _showDeleteAttendanceConfirmation(
+    BuildContext context,
+    Attendance record,
+  ) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
